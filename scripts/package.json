@@ -1,0 +1,13 @@
+{
+  "name": "hiraeth-haven-instagram-feed",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Daily fetcher for the @hiraethhavenshop Instagram gallery on hiraethhaven.com",
+  "main": "fetch-instagram.js",
+  "scripts": {
+    "fetch": "node fetch-instagram.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

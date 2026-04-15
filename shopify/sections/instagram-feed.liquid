@@ -1,0 +1,301 @@
+{% comment %}
+  Hiraeth Haven — Instagram Feed Carousel
+  ---------------------------------------
+  Renders the latest 4 posts from @hiraethhavenshop as a horizontal carousel.
+
+  Reads a JSON file produced daily by a GitHub Actions cron job:
+    https://raw.githubusercontent.com/<USER>/<REPO>/main/data/instagram-feed.json
+
+  Set the URL in the section settings (Theme editor → Instagram Feed).
+  No Instagram API calls are made from the browser — the JSON is pre-built.
+{% endcomment %}
+
+{%- assign feed_url = section.settings.feed_url -%}
+{%- assign heading  = section.settings.heading -%}
+{%- assign sub      = section.settings.subheading -%}
+{%- assign handle   = section.settings.ig_handle -%}
+{%- assign post_count = section.settings.post_count | default: 4 -%}
+
+<section
+  class="hh-ig-section"
+  data-hh-ig
+  data-feed-url="{{ feed_url }}"
+  data-post-count="{{ post_count }}"
+  style="
+    --hh-ig-bg: {{ section.settings.bg_color }};
+    --hh-ig-fg: {{ section.settings.text_color }};
+    --hh-ig-accent: {{ section.settings.accent_color }};
+  "
+>
+  <div class="hh-ig-inner">
+    <header class="hh-ig-header">
+      {% if heading != blank %}<h2 class="hh-ig-heading">{{ heading }}</h2>{% endif %}
+      {% if sub != blank %}<p class="hh-ig-sub">{{ sub }}</p>{% endif %}
+      {% if handle != blank %}
+        <a class="hh-ig-handle" href="https://instagram.com/{{ handle | remove: '@' }}" target="_blank" rel="noopener">
+          @{{ handle | remove: '@' }}
+        </a>
+      {% endif %}
+    </header>
+
+    <div class="hh-ig-carousel" role="region" aria-label="Instagram posts">
+      <button class="hh-ig-nav hh-ig-prev" type="button" aria-label="Previous">&lsaquo;</button>
+      <ul class="hh-ig-track" data-hh-ig-track>
+        {%- for i in (1..post_count) -%}
+          <li class="hh-ig-card hh-ig-skeleton" aria-hidden="true">
+            <div class="hh-ig-img"></div>
+            <div class="hh-ig-caption-skel"></div>
+          </li>
+        {%- endfor -%}
+      </ul>
+      <button class="hh-ig-nav hh-ig-next" type="button" aria-label="Next">&rsaquo;</button>
+    </div>
+  </div>
+</section>
+
+<style>
+  .hh-ig-section {
+    background: var(--hh-ig-bg, #f5efe6);
+    color:      var(--hh-ig-fg, #2b2b2b);
+    padding: 64px 16px;
+    font-family: inherit;
+  }
+  .hh-ig-inner { max-width: 1200px; margin: 0 auto; }
+  .hh-ig-header { text-align: center; margin-bottom: 32px; }
+  .hh-ig-heading {
+    font-family: inherit; font-weight: 500; letter-spacing: 0.04em;
+    font-size: clamp(1.5rem, 2.5vw, 2.25rem); margin: 0 0 8px;
+  }
+  .hh-ig-sub { margin: 0 0 8px; opacity: 0.75; font-size: 0.95rem; }
+  .hh-ig-handle {
+    display: inline-block; margin-top: 4px;
+    color: var(--hh-ig-accent, #8a6a3b);
+    text-decoration: none; font-size: 0.9rem; letter-spacing: 0.06em;
+  }
+  .hh-ig-handle:hover { text-decoration: underline; }
+
+  .hh-ig-carousel { position: relative; }
+  .hh-ig-track {
+    list-style: none; padding: 0; margin: 0;
+    display: grid; grid-auto-flow: column;
+    grid-auto-columns: calc(25% - 18px);
+    gap: 24px;
+    overflow-x: auto; scroll-snap-type: x mandatory;
+    scroll-behavior: smooth; -webkit-overflow-scrolling: touch;
+    padding: 8px 4px 16px;
+    scrollbar-width: thin;
+  }
+  @media (max-width: 900px) { .hh-ig-track { grid-auto-columns: calc(50% - 12px); } }
+  @media (max-width: 600px) { .hh-ig-track { grid-auto-columns: 80%; gap: 16px; } }
+
+  .hh-ig-card {
+    scroll-snap-align: start;
+    background: #fff;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    transition: transform 200ms ease, box-shadow 200ms ease;
+    display: flex; flex-direction: column;
+  }
+  .hh-ig-card a {
+    color: inherit; text-decoration: none; display: flex; flex-direction: column; height: 100%;
+  }
+  .hh-ig-card:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+
+  .hh-ig-img {
+    aspect-ratio: 1 / 1;
+    background: #ece4d6 center/cover no-repeat;
+    width: 100%;
+  }
+  .hh-ig-caption {
+    padding: 12px 14px 16px; font-size: 0.85rem; line-height: 1.45;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .hh-ig-meta {
+    padding: 0 14px 14px; font-size: 0.72rem; opacity: 0.55; letter-spacing: 0.04em; text-transform: uppercase;
+  }
+
+  /* Skeleton */
+  .hh-ig-skeleton .hh-ig-img,
+  .hh-ig-caption-skel {
+    background: linear-gradient(90deg, #ece4d6 0%, #f5efe6 50%, #ece4d6 100%);
+    background-size: 200% 100%;
+    animation: hh-ig-shimmer 1.4s linear infinite;
+  }
+  .hh-ig-caption-skel { height: 48px; margin: 12px 14px 16px; border-radius: 2px; }
+  @keyframes hh-ig-shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  .hh-ig-nav {
+    position: absolute; top: 50%; transform: translateY(-50%);
+    width: 40px; height: 40px; border-radius: 50%;
+    border: 1px solid var(--hh-ig-accent, #8a6a3b);
+    background: #fff; color: var(--hh-ig-accent, #8a6a3b);
+    font-size: 1.5rem; line-height: 1; cursor: pointer;
+    display: grid; place-items: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    z-index: 2;
+  }
+  .hh-ig-nav:hover { background: var(--hh-ig-accent, #8a6a3b); color: #fff; }
+  .hh-ig-prev { left: -8px; }
+  .hh-ig-next { right: -8px; }
+  @media (max-width: 600px) { .hh-ig-nav { display: none; } }
+</style>
+
+<script>
+(function () {
+  const root = document.currentScript.previousElementSibling
+    ? document.querySelector('[data-hh-ig]:last-of-type')
+    : document.querySelector('[data-hh-ig]');
+  if (!root) return;
+
+  const track    = root.querySelector('[data-hh-ig-track]');
+  const feedUrl  = root.dataset.feedUrl;
+  const limit    = parseInt(root.dataset.postCount, 10) || 4;
+
+  if (!feedUrl) {
+    console.warn('[hh-ig] No feed_url configured in section settings.');
+    return;
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c];
+    });
+  }
+
+  function relativeDate(iso) {
+    const d = new Date(iso);
+    if (isNaN(d)) return '';
+    const days = Math.floor((Date.now() - d.getTime()) / 86400000);
+    if (days <= 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 7)  return days + ' days ago';
+    if (days < 30) return Math.floor(days / 7) + 'w ago';
+    return d.toLocaleDateString();
+  }
+
+  function render(posts) {
+    track.innerHTML = '';
+    posts.slice(0, limit).forEach(function (p) {
+      const li = document.createElement('li');
+      li.className = 'hh-ig-card';
+      const caption = (p.caption || '').slice(0, 200);
+      li.innerHTML =
+        '<a href="' + escapeHtml(p.permalink) + '" target="_blank" rel="noopener">' +
+          '<div class="hh-ig-img" style="background-image:url(\'' + escapeHtml(p.image_url) + '\')"></div>' +
+          (caption ? '<div class="hh-ig-caption">' + escapeHtml(caption) + '</div>' : '') +
+          '<div class="hh-ig-meta">' + escapeHtml(relativeDate(p.timestamp)) + '</div>' +
+        '</a>';
+      track.appendChild(li);
+    });
+  }
+
+  function showError(msg) {
+    track.innerHTML = '<li class="hh-ig-card" style="grid-column: 1 / -1; padding: 24px; text-align:center;">' +
+      escapeHtml(msg) + '</li>';
+  }
+
+  // Cache-bust once per hour so the browser doesn't hold stale JSON forever,
+  // but still benefits from CDN caching within the hour.
+  const cacheKey = Math.floor(Date.now() / 3600000);
+  fetch(feedUrl + (feedUrl.indexOf('?') === -1 ? '?' : '&') + 'v=' + cacheKey, { cache: 'default' })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (data) {
+      if (!data || !Array.isArray(data.posts) || data.posts.length === 0) {
+        showError('No posts to show yet — check back soon.');
+        return;
+      }
+      render(data.posts);
+    })
+    .catch(function (err) {
+      console.warn('[hh-ig] Failed to load feed:', err);
+      showError('Unable to load Instagram feed right now.');
+    });
+
+  // Carousel nav buttons
+  const prev = root.querySelector('.hh-ig-prev');
+  const next = root.querySelector('.hh-ig-next');
+  function step(dir) {
+    const card = track.querySelector('.hh-ig-card');
+    const w = card ? card.getBoundingClientRect().width + 24 : 300;
+    track.scrollBy({ left: dir * w, behavior: 'smooth' });
+  }
+  if (prev) prev.addEventListener('click', function () { step(-1); });
+  if (next) next.addEventListener('click', function () { step(1); });
+})();
+</script>
+
+{% schema %}
+{
+  "name": "Instagram Feed",
+  "tag": "section",
+  "class": "hh-ig-section-wrap",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Follow the find"
+    },
+    {
+      "type": "text",
+      "id": "subheading",
+      "label": "Subheading",
+      "default": "Curated vintage, fairy lamps, and fine glassware — fresh from the studio."
+    },
+    {
+      "type": "text",
+      "id": "ig_handle",
+      "label": "Instagram handle",
+      "default": "hiraethhavenshop"
+    },
+    {
+      "type": "url",
+      "id": "feed_url",
+      "label": "Feed JSON URL",
+      "info": "Raw URL of data/instagram-feed.json from your GitHub repo (e.g. https://raw.githubusercontent.com/USER/REPO/main/data/instagram-feed.json)"
+    },
+    {
+      "type": "range",
+      "id": "post_count",
+      "label": "Posts to show",
+      "min": 2,
+      "max": 8,
+      "step": 1,
+      "default": 4
+    },
+    {
+      "type": "header",
+      "content": "Colors"
+    },
+    {
+      "type": "color",
+      "id": "bg_color",
+      "label": "Background",
+      "default": "#f5efe6"
+    },
+    {
+      "type": "color",
+      "id": "text_color",
+      "label": "Text",
+      "default": "#2b2b2b"
+    },
+    {
+      "type": "color",
+      "id": "accent_color",
+      "label": "Accent (handle, arrows)",
+      "default": "#8a6a3b"
+    }
+  ],
+  "presets": [
+    {
+      "name": "Instagram Feed",
+      "category": "Social"
+    }
+  ]
+}
+{% endschema %}
