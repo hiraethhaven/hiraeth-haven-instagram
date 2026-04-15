@@ -1,0 +1,74 @@
+name: Refresh Instagram Feed
+
+on:
+  # Daily at 06:00 UTC (~ overnight in the Americas, morning in Europe)
+  schedule:
+    - cron: '0 6 * * *'
+  # Allow manual runs from the Actions tab
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: instagram-feed
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Fetch latest posts
+        id: fetch
+        env:
+          IG_LONG_LIVED_TOKEN: ${{ secrets.IG_LONG_LIVED_TOKEN }}
+          IG_USER_ID: ${{ secrets.IG_USER_ID }}
+          POST_LIMIT: '4'
+        run: |
+          cd scripts
+          # Capture stdout so we can look for a rotated token line.
+          node fetch-instagram.js | tee ../fetch.log
+          NEW_TOKEN=$(grep '^NEW_TOKEN=' ../fetch.log | tail -n1 | cut -d= -f2-)
+          if [ -n "$NEW_TOKEN" ]; then
+            echo "rotated=true" >> "$GITHUB_OUTPUT"
+            echo "::add-mask::$NEW_TOKEN"
+            echo "new_token=$NEW_TOKEN" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Rotate IG_LONG_LIVED_TOKEN secret
+        if: steps.fetch.outputs.rotated == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT_FOR_SECRETS }}
+          NEW_TOKEN: ${{ steps.fetch.outputs.new_token }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "GH_PAT_FOR_SECRETS not set — skipping automatic secret rotation."
+            echo "Add a PAT with 'repo' scope as a secret named GH_PAT_FOR_SECRETS to enable auto-rotation."
+            exit 0
+          fi
+          gh secret set IG_LONG_LIVED_TOKEN \
+            --body "$NEW_TOKEN" \
+            --repo "$GITHUB_REPOSITORY"
+          echo "Rotated IG_LONG_LIVED_TOKEN."
+
+      - name: Commit updated feed
+        run: |
+          if git diff --quiet -- data/instagram-feed.json; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/instagram-feed.json
+          git commit -m "chore: refresh Instagram feed [skip ci]"
+          git push
